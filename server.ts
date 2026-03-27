@@ -14,6 +14,30 @@ dotenv.config({ path: ".env.local" });
 const app = express();
 const PORT = 3000;
 
+// Basic Auth Middleware
+const AUTH_USER = process.env.AUTH_USERNAME || "admin";
+const AUTH_PASS = process.env.AUTH_PASSWORD || "admin";
+
+app.use((req, res, next) => {
+  // API 상태체크는 인증 제외
+  if (req.path === "/api/health") return next();
+
+  const authHeader = req.headers.authorization;
+  if (authHeader) {
+    const [scheme, encoded] = authHeader.split(" ");
+    if (scheme === "Basic" && encoded) {
+      const decoded = Buffer.from(encoded, "base64").toString("utf-8");
+      const [user, pass] = decoded.split(":");
+      if (user === AUTH_USER && pass === AUTH_PASS) {
+        return next();
+      }
+    }
+  }
+
+  res.setHeader("WWW-Authenticate", 'Basic realm="Quant Agent"');
+  res.status(401).send("Authentication required");
+});
+
 app.use(express.json());
 
 // Upbit API Helper
